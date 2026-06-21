@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distributed Search Typeahead System</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- CSS Link -->
+  <link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <div class="glass-bg"></div>
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1>Typeahead System</h1>
+          <p class="subtitle">Consistent Hashing Cache • Batch Writer • Recency Ranking</p>
+        </div>
+      </div>
+      <div class="status-badge" id="server-status">
+        <span class="pulse-dot"></span> Server Connected
+      </div>
+    </header>
+
+    <!-- Main Grid Layout -->
+    <main class="dashboard-grid">
+
+      <!-- Left Column: Search & API Logs -->
+      <div class="grid-col flex-col">
+        <!-- Search Console -->
+        <section class="card glass-card search-console">
+          <div class="card-header">
+            <h2>🔍 Search Typeahead</h2>
+            <div class="badge badge-indigo" id="routing-label">Select Node</div>
+          </div>
+          <p class="card-description">Type query to see suggestions. Press Enter to submit search & increment count.</p>
+          
+          <div class="search-box-wrapper">
+            <div class="input-relative">
+              <input 
+                type="text" 
+                id="search-input" 
+                placeholder="Search products, programming, travel, cities..." 
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <button id="search-btn" class="btn-primary">Search</button>
+            </div>
+            <!-- Suggestion Dropdown -->
+            <ul id="suggestions-dropdown" class="suggestions-list hidden"></ul>
+          </div>
+
+          <!-- Dummy API Response Panel -->
+          <div class="api-response-panel mt-4">
+            <div class="response-header">
+              <span>Backend API Response</span>
+              <span id="response-time" class="text-muted">-- ms</span>
+            </div>
+            <pre id="response-body">{ "message": "Idle - Awaiting search" }</pre>
+          </div>
+        </section>
+
+        <!-- Stats Counter Panel -->
+        <section class="card glass-card stats-panel">
+          <h2>📊 System Metrics</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-value" id="stat-total-submissions">0</span>
+              <span class="stat-label">Total Submissions</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value text-emerald" id="stat-writes-saved">0</span>
+              <span class="stat-label">Disk Updates Saved</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value text-indigo" id="stat-reduction-rate">0.00%</span>
+              <span class="stat-label">Write Reduction</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-db-ops">0</span>
+              <span class="stat-label">Batch Flush Ops</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Configuration Settings -->
+        <section class="card glass-card settings-card">
+          <h2>⚙️ System Parameters</h2>
+          <form id="config-form" class="settings-form">
+            <div class="form-group">
+              <label for="cfg-cache-ttl">Cache TTL (seconds)</label>
+              <input type="number" id="cfg-cache-ttl" value="15" min="1" max="300">
+            </div>
+            <div class="form-group">
+              <label for="cfg-batch-size">Batch Size Limit (queries)</label>
+              <input type="number" id="cfg-batch-size" value="10" min="1" max="1000">
+            </div>
+            <div class="form-group">
+              <label for="cfg-flush-interval">Flush Interval (seconds)</label>
+              <input type="number" id="cfg-flush-interval" value="5" min="1" max="120">
+            </div>
+            <div class="form-group">
+              <label for="cfg-recency-window">Recency Window (seconds)</label>
+              <input type="number" id="cfg-recency-window" value="120" min="10" max="1800">
+            </div>
+            <div class="form-group">
+              <label for="cfg-recency-mult">Recency Score Multiplier</label>
+              <input type="number" id="cfg-recency-mult" value="100000" min="1" max="10000000">
+            </div>
+            <button type="submit" class="btn-secondary w-full mt-2">Apply Settings</button>
+          </form>
+        </section>
+      </div>
+
+      <!-- Right Column: Hashing Ring & Batch Queue -->
+      <div class="grid-col flex-col">
+        <!-- Consistent Hash Ring Visualizer -->
+        <section class="card glass-card hash-ring-card">
+          <div class="card-header">
+            <h2>🎡 Consistent Hash Ring</h2>
+            <div class="ring-status" id="active-ring-route">Hash Pointer</div>
+          </div>
+          <p class="card-description">Shows where the prefix hash lands on the ring and distributes to Nodes.</p>
+          
+          <div class="ring-visualizer-container">
+            <canvas id="ring-canvas" width="320" height="320"></canvas>
+            <div class="center-label">
+              <span id="prefix-hash-hex">0x00000000</span>
+              <span class="subtext">Current Prefix Hash</span>
+            </div>
+          </div>
+
+          <!-- Distributed Nodes Stats -->
+          <div class="nodes-stats-container">
+            <div class="node-row" id="node-row-a">
+              <div class="node-info">
+                <span class="node-color-indicator node-a-color"></span>
+                <span class="node-name">Cache Node A</span>
+              </div>
+              <div class="node-data">
+                <span class="node-keys" id="node-a-keys">0 keys</span>
+                <span class="node-ratio" id="node-a-ratio">Hit: 0 / Miss: 0</span>
+              </div>
+            </div>
+            <div class="node-row" id="node-row-b">
+              <div class="node-info">
+                <span class="node-color-indicator node-b-color"></span>
+                <span class="node-name">Cache Node B</span>
+              </div>
+              <div class="node-data">
+                <span class="node-keys" id="node-b-keys">0 keys</span>
+                <span class="node-ratio" id="node-b-ratio">Hit: 0 / Miss: 0</span>
+              </div>
+            </div>
+            <div class="node-row" id="node-row-c">
+              <div class="node-info">
+                <span class="node-color-indicator node-c-color"></span>
+                <span class="node-name">Cache Node C</span>
+              </div>
+              <div class="node-data">
+                <span class="node-keys" id="node-c-keys">0 keys</span>
+                <span class="node-ratio" id="node-c-ratio">Hit: 0 / Miss: 0</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Batch Write Queue Buffer -->
+        <section class="card glass-card queue-card">
+          <div class="card-header">
+            <h2>📥 Batch Write Buffer</h2>
+            <button id="flush-btn" class="btn-danger text-sm">Force Flush</button>
+          </div>
+          <p class="card-description">Queries aggregated in-memory before writing to disk DB.</p>
+          
+          <div class="queue-status-bar">
+            <span>Buffer Occupancy: <strong id="queue-occupancy">0</strong> / <span id="queue-limit">10</span></span>
+            <span class="text-muted" id="last-flush-label">Last flush: --</span>
+          </div>
+
+          <div class="queue-list-container">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th>Query Word</th>
+                  <th class="text-right">Unflushed Count</th>
+                </tr>
+              </thead>
+              <tbody id="queue-table-body">
+                <tr>
+                  <td colspan="2" class="text-center text-muted py-4">Queue is empty. Search above.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Trending Searches -->
+        <section class="card glass-card trending-card">
+          <div class="card-header">
+            <h2>🔥 Trending Searches</h2>
+            <div class="toggle-group">
+              <button class="btn-toggle active" id="ranking-popularity-btn">Popularity</button>
+              <button class="btn-toggle" id="ranking-recency-btn">Recency</button>
+            </div>
+          </div>
+          <p class="card-description">Shows queries currently trending across the entire dataset.</p>
+
+          <ol class="trending-list" id="trending-list-ol">
+            <!-- Loaded dynamically -->
+          </ol>
+        </section>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Search Typeahead System Implementation • Build with Vanilla CSS & HTML5 Canvas</p>
+    </footer>
+  </div>
+
+  <!-- JS Link -->
+  <script src="/index.js"></script>
+</body>
+</html>

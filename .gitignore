@@ -1,0 +1,5 @@
+# Local database persistence
+db.json
+
+# OS files
+.DS_Store
