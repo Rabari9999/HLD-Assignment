@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  typeahead-system:
+    build: .
+    container_name: typeahead-app
+    ports:
+      - "3000:3000"
+    volumes:
+      # Sync the database JSON file to persist searches across container cycles
+      - ./db.json:/usr/src/app/db.json
+    restart: unless-stopped

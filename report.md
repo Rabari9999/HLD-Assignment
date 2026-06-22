@@ -128,6 +128,29 @@ graph TD
 
 - **Read Latency**: 
   - Cache Hit: **< 1ms**
-  - Cache Miss (Trie query): **1.2ms - 2.5ms**
 - **Database Write Reduction**: **89.5% - 93.2%** reduction under typing test simulations (averaging 10 keystrokes/submissions per query session).
 - **Consistent Hashing Distribution**: Balance ratio of keys distributed across Cache Nodes A, B, and C falls within a standard deviation of $\pm 8\%$, proving uniform key spacing on the ring.
+
+---
+
+## 6. How to Run the Program
+
+### Option A: Running Locally (Standard Node.js)
+1. Ensure Node.js is installed on your machine.
+2. Start the server:
+   ```bash
+   node server.js
+   ```
+3. Open your browser and navigate to `http://localhost:3000/`.
+
+### Option B: Running with Docker (Containerized)
+1. Ensure you have **Docker** and **Docker Compose** installed.
+2. Build and launch the container in the background:
+   ```bash
+   docker-compose up --build -d
+   ```
+3. Open your browser and navigate to `http://localhost:3000/`.
+4. To stop the container running:
+   ```bash
+   docker-compose down
+   ```
